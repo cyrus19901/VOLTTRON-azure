@@ -1,0 +1,16 @@
+{
+    "agentid": "clouddb-historian",
+    "subscriber_identity": "subscriber_target",
+    "destination-vip": "tcp://192.101.106.94:22916?serverkey=80UiGzDNQXdfynbUZ2bGgAyeyDEOQWPzD8wDPH7hvi0&secretkey=mon7PJZC4uFGDzh0KnouCs8Tkzy2007vO2RwA9_6FQQ&publickey=NSpdD55oCX3rcagLJcRmBoXXXBFJaOAKNkndGGPaehs",
+    "connection": {
+        "type": "clouddb",
+        "params": {
+            "host": "localhost",
+            "port": 27017,
+            "database": "volttron_guide",
+            "user": "admin",
+            "passwd": "admin"
+        }
+    }
+}
+
