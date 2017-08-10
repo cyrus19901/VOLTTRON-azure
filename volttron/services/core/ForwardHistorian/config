@@ -1,0 +1,12 @@
+{
+
+    "agentid": "forwarder",
+    "destination-vip": "130.20.116.128:22916",
+    "custom_topic_list": [],   
+    "services_topic_list": [
+        "devices", "analysis", "record", "datalogger", "actuators"
+    ],
+    "topic_replace_list": [
+	    #{"from": "FromString", "to": "ToString"}
+    ]
+}

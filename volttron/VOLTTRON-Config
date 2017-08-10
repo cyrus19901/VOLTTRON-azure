@@ -1,0 +1,3 @@
+[volttron]
+vip-addres=tcp://127.0.0.1:22916
+bind-web-address=http://127.0.0.1:8080

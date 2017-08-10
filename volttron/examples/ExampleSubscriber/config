@@ -1,0 +1,13 @@
+{
+
+    "agentid": "ExampleSubscriber",
+    "message": "hello",
+    "subscriber_identity": "subscriber_target",
+    "oat_point": "devices/Building/LAB/Device/OutsideAirTemperature",
+    "mixed_point": "devices/Building/LAB/Device/MixedAirTemperature",
+    "damper_point": "devices/Building/LAB/Device/DamperSignal",
+    "all_topic": "devices/Building/LAB/Device/all",
+    "query_point": "Building/LAB/Device/OutsideAirTemperature",
+    "destination-vip": "tcp://172.26.65.218:22916?serverkey=sB6evq567FrpFmqZ9gAxvjFeS_BRXHL8wP8eUT4gGlY&publickey=gzPWb1YeitgIWJi-ie9hKCl4N3riY-oc6k7SQW2OB2M&secretkey=hH-ifmVAtBpNHGRHIJ0KILUmizQPMPKiDn9_CNQjTfY"
+ 
+}

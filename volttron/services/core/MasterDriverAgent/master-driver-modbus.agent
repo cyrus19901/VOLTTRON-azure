@@ -1,0 +1,6 @@
+{
+	"agentid": "master_driver",
+	"driver_config_list": ["/home/rajveer/Desktop/volttron/examples/configurations/drivers/modbus1.config"],
+
+	"staggered_start": 30.0
+}

@@ -1,0 +1,5 @@
+{
+	"agentid": "master_driver",
+	"driver_config_list": ["/home/rajveer/Desktop/volttron/services/core/MasterDriverAgent/master_driver/test_modbus1.config"]
+
+}
