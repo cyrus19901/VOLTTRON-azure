@@ -51,41 +51,29 @@
 # PACIFIC NORTHWEST NATIONAL LABORATORY
 # operated by BATTELLE for the UNITED STATES DEPARTMENT OF ENERGY
 # under Contract DE-AC05-76RL01830
-
+# Author :Rajveer Singh
 # }}}
-
 from __future__ import absolute_import, print_function
 
-import logging
-import sys
-
-import pymongo
-from bson.objectid import ObjectId
-from examples.ExampleSubscriber.subscriber import subscriber_agent
-from pymongo import InsertOne, ReplaceOne
-from pymongo.errors import BulkWriteError
+import pymssql
 import gevent
-
-
-
-from datetime import datetime
+import json
 import logging
-import random
-import sys
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
-from volttron.platform.agent import utils
-from volttron.platform.messaging import headers as headers_mod
-from volttron.platform.messaging import topics, headers as headers_mod
 from volttron.platform.messaging.health import (STATUS_BAD,
                                                 STATUS_GOOD, Status)
+import datetime
+import numpy as np
+import pandas as pd
+import sys
+import string
+import re
 #IOT libraries----------------
 import time
 import sys
-import  volttron.utils.iothub_client
 from volttron.utils.iothub_client import *
 from volttron.utils.iothub_client_args import *
-
-
+from volttron.platform.agent import utils
 #-------------------------------
 
 #global variable for iot hub---
@@ -97,11 +85,10 @@ i=0
 # global counters
 receive_callbacks = 0
 send_callbacks = 0
-Data_List = list() #empty list
-# message = list()
+flag=0
 #--------------------------------
 
-from volttron.platform.agent import utils
+
 from volttron.platform.agent.base_historian import BaseHistorian
 
 # We choose HTTP as our protocol for our purpose to send messages to the IOT hub----------
@@ -109,22 +96,17 @@ protocol = IoTHubTransportProvider.HTTP
 
 # The connection string for the device to communicate with the IOT hub
 connection_string = "HostName=volttron-iot-demo.azure-devices.net;DeviceId=Myvm;SharedAccessKey=qO81QDqFzy6UeEFCd1/H01ie2PsL6Dkxgfz+2p+3h3w="
-
-#the message we want to send to the cloud
-#to do: get messages from VC and send it to the cloud
-msg_txt = "{\"deviceId\": \"myRaspberryPieDevice\",\"DATA\": \"Data from the building\""
-
 #-----------------------------------------------------
 
 FORWARD_TIMEOUT_KEY = 'FORWARD_TIMEOUT_KEY'
 utils.setup_logging()
 _log = logging.getLogger(__name__)
 __version__ = '3.5'
+conn = pymssql.connect(server='volttroniot.database.windows.net', user='volttron@volttroniot', password='vvvVVV123@@@',
+                       database='database1')
+cursor = conn.cursor()
+conn.autocommit(True)
 
-'''
-Structuring the agent this way allows us to grab config file settings
-for use in subscriptions instead of hardcoding them.
-'''
 #IOT code------------------------------------------------------------------------------
 # define the certificated here which need to be defined to establish the communication
 def set_certificates(iotHubClient):
@@ -161,12 +143,8 @@ def send_confirmation_callback(message, result, user_context):
     print(
         "Confirmation[%d] received for message with result = %s" %
         (user_context, result))
-    print("insde the confirmation message")
-    print("    message Id: %s" % message.message_id)
-    print("    correlation Id: %s" % message.correlation_id)
-    print("message sent :%s " , msg_txt)
     send_callbacks += 1
-    print("    Total calls confirmed: %d" % send_callbacks)
+    print("Total calls confirmed: %d" % send_callbacks)
 
 def iothub_client_init():
     # prepare iothub client
@@ -174,7 +152,6 @@ def iothub_client_init():
     if iotHubClient.protocol == IoTHubTransportProvider.HTTP:
         iotHubClient.set_option("timeout", timeout)
         iotHubClient.set_option("MinimumPollingTime", minimum_polling_time)
-    #iotHubClient.set_option("messageTimeout", message_timeout)
     if iotHubClient.protocol == IoTHubTransportProvider.MQTT:
         iotHubClient.set_option("logtrace", 0)
     iotHubClient.set_message_callback(
@@ -192,37 +169,75 @@ def print_last_message_time(iotHubClient):
         else:
             print(e)
 
-def iothub_client_volttron_run():
-    i=0
-    b=bytearray()
+def iothub_client_volttron_run(self, peer, sender, bus, topic, headers, message):
+
+    results_parametername=list()
+    results_parametervalue=[]
+    topicNameList=[]
+
     try:
+        i = 0
+        timestamp=headers['TimeStamp']
+        converted_timestamp=pd.Timestamp(np.datetime64(timestamp)).to_pydatetime()
+        print(converted_timestamp)
+        time_formatted= time.mktime(converted_timestamp.timetuple())
+        print(time_formatted)
         #initializing the iotHubClient
         iotHubClient = iothub_client_init()
-
-        while True:
-            # send a few messages every minute
-            if (i & 1) == 1:
-                message = IoTHubMessage(bytearray(msg_txt, 'utf8'))
-                print (message)
-            else:
-                message = IoTHubMessage(msg_txt)
-            # message.message_id = "message_%d" % i
-            # message.correlation_id = "correlation_%d" % i
-            iotHubClient.send_event_async(message, send_confirmation_callback, i)
-            print(
-                "IoTHubClient.send_event_async accepted message [%d]"
-                " for transmission to IoT Hub." %
-                i)
+        print("the database connection is established")
+        cursor = conn.cursor()
+        for element in message[0]:
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            topicname = topic
+            print (topicname)
+            setpoint = element
+            setpoint_value = message[0][element]
+            results_parametervalue.append(setpoint_value)
+            print (setpoint)
+            chars_to_remove = ['(',')','(','\n','!','?','/',' ','-']
+            topicname_modified=topic.translate(None, ''.join(chars_to_remove))
+            print(topicname_modified)
+            setpoint_modified=setpoint.translate(None, ''.join(chars_to_remove))
+            msg_txt = '%s' % setpoint_modified
+            results_parametername.append(msg_txt)
+            msg_json = "{\"TopicName\": \"%s\",\"SetPointName\": \"%s\",\"SetPointValue\": %r,\"Time\": %r}"
+            msg_json_formatted = msg_json % (topicname,msg_txt,setpoint_value,time_formatted)
+            print(msg_json_formatted)
+            message_json=IoTHubMessage(bytearray(msg_json_formatted, 'utf8'))
+            iotHubClient.send_event_async(message_json, send_confirmation_callback, i)
             i=i+1
-            # Wait for Commands or exit
-            print("IoTHubClient waiting for commands, press Ctrl-C to exit")
 
-            n = 0
-            while n < 1:
-                status = iotHubClient.get_send_status()
-                print("Send status: %s" % status)
-                time.sleep(2)
-                n += 1
+        global flag
+        tup = tuple(results_parametername)
+        tup2 =(' FLOAT(10),'.join(ele for ele in tup))
+        tup3 = (tup2+' FLOAT(10)')
+        tup1 =(','.join(ele for ele in tup))
+        topicNameList.append(topicname_modified)
+        results_parametervalue.append(time_formatted)
+        for iterate in topicNameList:
+            if (topicname_modified!=iterate):
+                query3 = "CREATE TABLE %s (%s,time_value FLOAT);" % (topicname_modified, tup3)
+                cursor.execute(query3)
+            else:
+                query_string = 'INSERT INTO %s(%s,time_value) VALUES %r' % (
+                topicname_modified, tup1, tuple(results_parametervalue))
+                cursor.execute(query_string)
+        flag = flag + 1
+
+        print(
+            "IoTHubClient.send_event_async accepted message [%d]"
+            " for transmission to IoT Hub." %
+            i)
+        i=i+1
+        # Wait for Commands or exit
+        print("IoTHubClient waiting for commands, press Ctrl-C to exit")
+
+        n = 0
+        while n < 1:
+            status = iotHubClient.get_send_status()
+            print("Send status: %s" % status)
+            time.sleep(2)
+            n += 1
 
     except IoTHubError as e:
         print("Unexpected error %s from IoTHub" % e)
@@ -231,90 +246,62 @@ def iothub_client_volttron_run():
         print("IoTHubClient sample stopped")
 
     print_last_message_time(iotHubClient)
+    # conn.close()
 
-
-# if __name__ == '__main__':
-#     print("\nPython Version : %s" % sys.version)
-#     print("IoT Hub for Python SDK Version: %s" % iothub_client.__version__)
-#
-# #establish the connection using the connection string and the protocol
-#     try:
-#         (connection_string, protocol) = get_iothub_opt(sys.argv[1:], connection_string, protocol)
-#     except OptionError as o:
-#         print(o)
-#         sys.exit(1)
-#
-#     print("Starting the IoT Hub for Volttron")
-#     print("    Protocol : %s" % protocol)
-#     print("    Connection string :%s" % connection_string)
-#
-#     iothub_client_volttron_run()
 
 #end of the IOT code ----------------------------------------------------------------------------------
 
-    def subscriber_agent(config_path, **kwargs):
-        config = utils.load_config(config_path)
-        destination_vip = config.get('destination-vip')
-        subscriber_identity = config.get('subscriber_identity', None)
 
-        class ExampleSubscriber(Agent):
+def historian(config_path, **kwargs):
+    config = utils.load_config(config_path)
+    destination_vip = config.get('destination-vip')
+    # subscriber_identity = config.get('subscriber_identity', None)
+
+    class CloudHistorian(Agent):
+
+        def __init__(self, **kwargs):
+            super(CloudHistorian, self).__init__(**kwargs)
+
+        @Core.receiver('onstart')
+        def setup(self, sender, **kwargs):
+            # Demonstrate accessing a value from the config file
+            self._agent_id = config['agentid']
+            try:
+                event = gevent.event.Event()
+                agent = Agent(address=destination_vip)
+                agent.core.onstart.connect(lambda *a, **kw: event.set(), event)
+                gevent.spawn(agent.core.run)
+                event.wait(timeout=10)
+                self._target_platform = agent
+
+            except gevent.Timeout:
+                self.vip.health.set_status(
+                    STATUS_BAD, "Timeout in setup of agent")
+                status = Status.from_json(self.vip.health.get_status())
+                self.vip.health.send_alert(FORWARD_TIMEOUT_KEY,
+                                           status)
+                event.wait(timeout=10)
+            agent.vip.pubsub.subscribe(peer='pubsub', prefix='devices/PNNL/BUILDING1/', callback=self.on_match)
+
+        def on_match(self, peer, sender, bus, topic, headers, message):
             '''
-            This agent demonstrates usage of the 3.0 pubsub service as well as
-            interfacting with the historian. This agent is mostly self-contained,
-            but requires the histoiran be running to demonstrate the query feature.
+            Subscribes to the platform message bus on the actuator, record,
+            datalogger, and device topics to capture data.
             '''
 
-            def __init__(self, **kwargs):
-                super(ExampleSubscriber, self).__init__(**kwargs)
+            _log.debug('GOT DATA FOR: {}'.format(topic))
+            iothub_client_volttron_run(self, peer, sender, bus, topic, headers, message)
 
-            @Core.receiver('onstart')
-            def setup(self, sender, **kwargs):
-                # Demonstrate accessing a value from the config file
-                iothub_client_volttron_run()
-                self._agent_id = config['agentid']
-                try:
-                    # _log.debug("Setting up to forward to {}".format(destination_vip))
-                    event = gevent.event.Event()
-                    agent = Agent(address=destination_vip)
-                    agent.core.onstart.connect(lambda *a, **kw: event.set(), event)
-                    gevent.spawn(agent.core.run)
-                    event.wait(timeout=10)
-                    self._target_platform = agent
-
-                except gevent.Timeout:
-                    self.vip.health.set_status(
-                        STATUS_BAD, "Timeout in setup of agent")
-                    status = Status.from_json(self.vip.health.get_status())
-                    self.vip.health.send_alert(FORWARD_TIMEOUT_KEY,
-                                               status)
-                agent.vip.pubsub.subscribe(peer='pubsub', prefix='devices/PNNL/', callback=self.on_match)
-
-            def on_match(self, peer, sender, bus, topic, headers, message):
-                '''
-                Subscribes to the platform message bus on the actuator, record,
-                datalogger, and device topics to capture data.
-                '''
-
-                _log.debug('GOT DATA FOR: {}'.format(topic))
-                iothub_client_volttron_run()
-
-        return ExampleSubscriber(**kwargs)
-
-    def main(argv=sys.argv):
-        '''Main method called by the eggsecutable.'''
-        try:
-            utils.vip_main(subscriber_agent)
-        except Exception as e:
-            _log.exception('unhandled exception')
-
-
-
+    return CloudHistorian(**kwargs)
 
 def main(argv=sys.argv):
-    '''Main method called by the eggsecutable.'''
+    """Main method called by the eggsecutable.
+    @param argv:
+    """
     try:
         utils.vip_main(historian)
     except Exception as e:
+        print(e)
         _log.exception('unhandled exception')
 
 
