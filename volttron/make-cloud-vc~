@@ -1,0 +1,9 @@
+export SOURCE=examples/CloudHistorian
+export CONFIG=examples/CloudHistorian/config.clouddb.platform.historian
+export TAG=cloud
+
+./scripts/core/make-agent.sh 
+
+# To set the agent to autostart with the platform, pass "enable" 
+# to make-agent.sh: ./scripts/core/make-agent.sh enable
+

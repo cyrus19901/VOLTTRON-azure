@@ -1,0 +1,14 @@
+{
+	"driver_config": {
+		"device_address": "130.20.116.13",
+		"device_id": 500
+	},
+	"campus": "pnnl",
+	"driver_type": "bacnet",
+	"building": "etb",
+	"registry_config": "/home/rajveer/Desktop/volttron/scripts/bacnet/test_bacnet.csv",
+	"interval": 60,
+	"unit": "hvac1",
+	"timezone": "UTC",
+	#"heart_beat_point": "Heartbeat"
+}
